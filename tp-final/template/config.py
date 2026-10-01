@@ -30,7 +30,9 @@ DIR_LOGS = "logs"
 
 ARCHIVO_SALIDA_CSV = "exportaciones_nea.csv"
 ARCHIVO_SALIDA_JSON = "resumen.json"
+ARCHIVO_SALIDA_RESUMEN = ARCHIVO_SALIDA_JSON
 ARCHIVO_LOG = "pipeline.log"
+ARCHIVO_LOG_CORRIDAS = ARCHIVO_LOG
 
 # ----------------------------------------------------------------------
 # SERIES POR PROVINCIA — exportaciones por PAÍS DE DESTINO (dataset 357.1)

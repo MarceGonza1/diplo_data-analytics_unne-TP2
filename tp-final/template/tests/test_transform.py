@@ -145,21 +145,16 @@ class TestJoinRubros(unittest.TestCase):
 # TODO 13 (BONUS) — Escribí vos estos dos tests
 # ======================================================================
 class TestPropios(unittest.TestCase):
-    """Sumá tus propios casos. Ideas:
+    """Sumá tus propios casos."""
 
-    - ¿Qué pasa si 'paquetes_destino' viene vacío? ancho_a_largo()
-      debería devolver [] y no romper.
-    - ¿El ranking asigna bien cuando hay empate en valor_musd?
-    - ¿calcular_decada() funciona con un año de otra década, como 2010?
-    """
-
-    @unittest.skip("TODO 13: quitá este skip y escribí el test")
     def test_lista_vacia(self):
-        self.fail("Escribí este test")
+        # Verifica que ancho_a_largo devuelva una lista vacía y no rompa
+        resultado = transform.ancho_a_largo([])
+        self.assertEqual(resultado, [])
 
-    @unittest.skip("TODO 13: quitá este skip y escribí el test")
     def test_a_eleccion(self):
-        self.fail("Escribí este test")
+        # Verifica que calcular_decada funcione correctamente con un año como 2010
+        self.assertEqual(transform.calcular_decada(2010), "2010s")
 
 
 if __name__ == "__main__":

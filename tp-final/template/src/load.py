@@ -55,27 +55,29 @@ def chequear_columnas(filas):
 
 
 def chequear_unicidad(filas):
-    """¿Hay duplicados? La clave del dataset es (provincia, anio, destino).
-
-    Debe devolver (bool, mensaje), igual que los checks de arriba.
-    """
-    # TODO 9 --------------------------------------------------------------
-    # Pista: es el patrón del set que viste en la Clase 3. Armá la lista de
-    # claves (una tupla por fila) y compará len(lista) con len(set(lista)).
-    raise NotImplementedError("TODO 9: implementá chequear_unicidad()")
+    """¿Hay duplicados? La clave del dataset es (provincia, anio, destino)."""
+    claves = [(f["provincia"], f["anio"], f["destino"]) for f in filas]
+    es_unico = len(claves) == len(set(claves))
+    
+    if es_unico:
+        return True, f"unicidad: {len(claves)} filas sin duplicados"
+    else:
+        duplicados = len(claves) - len(set(claves))
+        return False, f"unicidad: se encontraron {duplicados} filas duplicadas"
     # ---------------------------------------------------------------------
 
 
 def chequear_rangos(filas):
-    """¿Los valores son plausibles?
-
-    Un valor negativo o mayor a config.VALOR_MAXIMO_RAZONABLE es
-    sospechoso: no existen exportaciones negativas.
-    """
-    # TODO 10 -------------------------------------------------------------
-    # Pista: una comprensión de lista con la condición al final te da
-    # directamente las filas fuera de rango; después mirás cuántas son.
-    raise NotImplementedError("TODO 10: implementá chequear_rangos()")
+    """¿Los valores son plausibles?"""
+    fuera_de_rango = [
+        f for f in filas 
+        if f["valor_musd"] < 0 or f["valor_musd"] > config.VALOR_MAXIMO_RAZONABLE
+    ]
+    ok = len(fuera_de_rango) == 0
+    if ok:
+        return True, "rangos: todos los valores de valor_musd son válidos y plausibles"
+    else:
+        return False, f"rangos: hay {len(fuera_de_rango)} filas fuera de rango (negativos o > máx)"
     # ---------------------------------------------------------------------
 
 
@@ -146,57 +148,73 @@ def guardar_csv(filas, carpeta=None, nombre=None):
 
 
 def construir_resumen(filas, detalle_checks):
-    """Arma el resumen del proceso: metadatos + estadísticas descriptivas.
+    """Arma el resumen del proceso: metadatos + estadísticas descriptivas."""
+    valores = [f["valor_musd"] for f in filas if f["valor_musd"] is not None]
+    anios = [f["anio"] for f in filas if f["anio"] is not None]
+    provincias = sorted(list(set(f["provincia"] for f in filas if f.get("provincia"))))
 
-    Este JSON es la "ficha técnica" del dataset: quien lo reciba tiene que
-    poder saber de dónde salió, cuándo y qué contiene, SIN abrir el CSV.
+    val_min = round(min(valores), 2) if valores else 0
+    val_max = round(max(valores), 2) if valores else 0
+    val_prom = round(sum(valores) / len(valores), 2) if valores else 0
 
-    CONTRATO: devolvé un dict que incluya al menos estas claves:
-
-        dataset            (str)  nombre descriptivo
-        fuente             (str)  de dónde salieron los datos
-        unidad             (str)  "millones de dólares FOB"
-        generado           (str)  fecha y hora de esta corrida
-        filas              (int)
-        columnas           (int)
-        periodo            (dict) {"desde": anio_min, "hasta": anio_max}
-        provincias         (list) ordenada
-        valor_musd         (dict) {"minimo":…, "maximo":…, "promedio":…}
-        quality_checks     (list) el detalle_checks que recibís
-    """
-    # TODO 11 -------------------------------------------------------------
-    # Pistas:
-    #   - Para la lista de valores: [f["valor_musd"] for f in filas]
-    #   - min(), max() y sum()/len() ya los conocés.
-    #   - Para provincias únicas y ordenadas: sorted({f["provincia"] for f in filas})
-    #   - Para la fecha: datetime.now().strftime("%Y-%m-%d %H:%M")
-    #   - Podés agregar más claves si querés (suma puntos en la rúbrica).
-    raise NotImplementedError("TODO 11: implementá construir_resumen()")
+    resumen = {
+        "dataset": "Exportaciones del NEA",
+        "fuente": "INDEC / Datos Abiertos",
+        "unidad": "millones de dólares FOB",
+        "generado": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "filas": len(filas),
+        "columnas": len(COLUMNAS),
+        "periodo": {
+            "desde": min(anios) if anios else None,
+            "hasta": max(anios) if anios else None
+        },
+        "provincias": provincias,
+        "valor_musd": {
+            "minimo": val_min,
+            "maximo": val_max,
+            "promedio": val_prom
+        },
+        "quality_checks": detalle_checks
+    }
+    return resumen
     # ---------------------------------------------------------------------
 
 
 def guardar_resumen(resumen, carpeta=None, nombre=None):
-    """Escribe el resumen en JSON, legible por humanos y por programas.
+    """Escribe el resumen en JSON, legible por humanos y por programas."""
+    carpeta = carpeta or config.DIR_PROCESSED
+    nombre = nombre or config.ARCHIVO_SALIDA_RESUMEN
+    os.makedirs(carpeta, exist_ok=True)
+    ruta = os.path.join(carpeta, nombre)
 
-    Acordate de los dos argumentos que vimos: ensure_ascii=False para que
-    las tildes se guarden bien, e indent=2 para que sea legible.
-    """
-    # TODO 12a ------------------------------------------------------------
-    # Muy parecido a guardar_csv(), pero con json.dump().
-    raise NotImplementedError("TODO 12a: implementá guardar_resumen()")
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(resumen, f, ensure_ascii=False, indent=2)
+
+    logging.info(" Resumen JSON: %s", ruta)
+    return ruta
     # ---------------------------------------------------------------------
 
 
 def escribir_log_corrida(resumen, carpeta=None, nombre=None):
-    """Agrega UNA línea al historial del pipeline.
+    """Agrega UNA línea al historial del pipeline."""
+    carpeta = carpeta or config.DIR_LOGS
+    nombre = nombre or config.ARCHIVO_LOG_CORRIDAS
+    os.makedirs(carpeta, exist_ok=True)
+    ruta = os.path.join(carpeta, nombre)
 
-    Modo "a" (append): nunca borra lo anterior. Cada corrida deja su rastro.
-    Sugerencia de formato:
+    fecha_hora = resumen.get("generado", datetime.now().strftime("%Y-%m-%d %H:%M"))
+    filas = resumen.get("filas", 0)
+    periodo = resumen.get("periodo", {})
+    desde = periodo.get("desde", "")
+    hasta = periodo.get("hasta", "")
 
-        2026-08-02 14:30 | OK | 1408 filas | 1993-2024
-    """
-    # TODO 12b ------------------------------------------------------------
-    raise NotImplementedError("TODO 12b: implementá escribir_log_corrida()")
+    linea = f"{fecha_hora} | OK | {filas} filas | {desde}-{hasta}\n"
+
+    with open(ruta, "a", encoding="utf-8") as f:
+        f.write(linea)
+
+    logging.info(" Log actualizado: %s", ruta)
+    return ruta
     # ---------------------------------------------------------------------
 
 
